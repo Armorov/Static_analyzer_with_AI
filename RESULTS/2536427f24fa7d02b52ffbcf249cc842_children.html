@@ -1,0 +1,267 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Function Call Graph</title>
+    <script type="text/javascript" src="vis-network.min.js"></script>
+    <style type="text/css">
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #mynetwork {
+            width: 100%;
+            height: 100vh;
+        }
+        #info-panel {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 300px;
+            height: 100vh;
+            padding: 15px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            background: #f5f5f5;
+            border-left: 1px solid #ddd;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+        #info-panel.visible {
+            transform: translateX(0);
+        }
+        .info-field {
+            margin-bottom: 15px;
+        }
+        .info-field label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .info-field input, .info-field textarea {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .info-field input[readonly] {
+            background: #eee;
+        }
+        .info-field textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .highlighted {
+            background-color: #7BE141 !important;
+            border-color: #5BB82C !important;
+        }
+        .highlighted-edge {
+            stroke: #5BB82C !important;
+        }
+        #search-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 101;
+            background: white;
+            padding: 5px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        #search-input {
+            width: 250px;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="search-container">
+        <input type="text" id="search-input" placeholder="Search function..." list="functions-list">
+        <datalist id="functions-list"></datalist>
+    </div>
+    <div id="mynetwork"></div>
+    <div id="info-panel">
+        <div class="info-field">
+            <label>FUNC_NAME</label>
+            <input type="text" id="node-name" readonly>
+        </div>
+        <div class="info-field">
+            <label>ID</label>
+            <input type="text" id="node-id" readonly>
+        </div>
+        <div class="info-field">
+            <label>PATH</label>
+            <input type="text" id="node-path" readonly>
+        </div>
+        <div class="info-field">
+            <label>START_POINT</label>
+            <input type="text" id="node-string" readonly>
+        </div>
+        <div class="info-field">
+            <label>Заметки</label>
+            <textarea id="node-notes"></textarea>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var nodes = new vis.DataSet([{"id": "2536427f24fa7d02b52ffbcf249cc842", "label": "main", "title": "ID: 2536427f24fa7d02b52ffbcf249cc842\nName: main", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "118", "notes": ""}, {"id": "1851aa9a936a3c41db794f1b11004e48", "label": "of", "title": "ID: 1851aa9a936a3c41db794f1b11004e48\nName: of", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "30", "notes": ""}, {"id": "a02295440775fcdc5a0fb62f46bfe87c", "label": "checkout", "title": "ID: a02295440775fcdc5a0fb62f46bfe87c\nName: checkout", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "88", "notes": ""}, {"id": "3e467da4b38e0d8da08c1efccbae652d", "label": "total", "title": "ID: 3e467da4b38e0d8da08c1efccbae652d\nName: total", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "25", "notes": ""}, {"id": "3175e3cacd8e162b694457e26560f0ba", "label": "lineTotal", "title": "ID: 3175e3cacd8e162b694457e26560f0ba\nName: lineTotal", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "17", "notes": ""}, {"id": "ba86f89dc9667290dcf5a068e28d542a", "label": "times", "title": "ID: ba86f89dc9667290dcf5a068e28d542a\nName: times", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "11", "notes": ""}, {"id": "4418544cf80185459abd43b20126a6e7", "label": "plus", "title": "ID: 4418544cf80185459abd43b20126a6e7\nName: plus", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "6", "notes": ""}, {"id": "c84b36ddb0df2521cc0d9d1a299cfc69", "label": "discount", "title": "ID: c84b36ddb0df2521cc0d9d1a299cfc69\nName: discount", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "103", "notes": ""}, {"id": "d0a4b6823296439dd633b64ae988fdf6", "label": "pay", "title": "ID: d0a4b6823296439dd633b64ae988fdf6\nName: pay", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "49", "notes": ""}, {"id": "a600f12d63127c7e4562c05b27a10449", "label": "pay", "title": "ID: a600f12d63127c7e4562c05b27a10449\nName: pay", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "55", "notes": ""}, {"id": "65b2792e480ea7d6e3f398572acb9a56", "label": "pay", "title": "ID: 65b2792e480ea7d6e3f398572acb9a56\nName: pay", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "64", "notes": ""}, {"id": "8a6cee6256d00c4a0227ba172be3aff1", "label": "save", "title": "ID: 8a6cee6256d00c4a0227ba172be3aff1\nName: save", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "72", "notes": ""}, {"id": "26664fd076db7fee97a542e58a8dd7d3", "label": "save", "title": "ID: 26664fd076db7fee97a542e58a8dd7d3\nName: save", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "78", "notes": ""}, {"id": "da79aaf3eccbc84b39fac48ca34542b4", "label": "describe", "title": "ID: da79aaf3eccbc84b39fac48ca34542b4\nName: describe", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "111", "notes": ""}, {"id": "c449e7cf3047473a5a0fc34058e5aa0a", "label": "format", "title": "ID: c449e7cf3047473a5a0fc34058e5aa0a\nName: format", "font": {"size": 12}, "margin": 5, "shape": "box", "color": {"background": "#D2E5FF", "border": "#2B7CE9", "highlight": {"background": "#97C2FC", "border": "#2B7CE9"}}, "path": "TEST/test_code.kt", "string_num": "13", "notes": ""}]);
+        var edges = new vis.DataSet([{"from": "2536427f24fa7d02b52ffbcf249cc842", "to": "1851aa9a936a3c41db794f1b11004e48", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "2536427f24fa7d02b52ffbcf249cc842", "to": "a02295440775fcdc5a0fb62f46bfe87c", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "a02295440775fcdc5a0fb62f46bfe87c", "to": "3e467da4b38e0d8da08c1efccbae652d", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "3e467da4b38e0d8da08c1efccbae652d", "to": "3175e3cacd8e162b694457e26560f0ba", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "3175e3cacd8e162b694457e26560f0ba", "to": "ba86f89dc9667290dcf5a068e28d542a", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "3e467da4b38e0d8da08c1efccbae652d", "to": "4418544cf80185459abd43b20126a6e7", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "a02295440775fcdc5a0fb62f46bfe87c", "to": "c84b36ddb0df2521cc0d9d1a299cfc69", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "a02295440775fcdc5a0fb62f46bfe87c", "to": "d0a4b6823296439dd633b64ae988fdf6", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "a02295440775fcdc5a0fb62f46bfe87c", "to": "a600f12d63127c7e4562c05b27a10449", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "a02295440775fcdc5a0fb62f46bfe87c", "to": "65b2792e480ea7d6e3f398572acb9a56", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "a02295440775fcdc5a0fb62f46bfe87c", "to": "8a6cee6256d00c4a0227ba172be3aff1", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "a02295440775fcdc5a0fb62f46bfe87c", "to": "26664fd076db7fee97a542e58a8dd7d3", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "2536427f24fa7d02b52ffbcf249cc842", "to": "da79aaf3eccbc84b39fac48ca34542b4", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}, {"from": "da79aaf3eccbc84b39fac48ca34542b4", "to": "c449e7cf3047473a5a0fc34058e5aa0a", "arrows": "to", "smooth": {"type": "curvedCW", "roundness": 0.2}, "color": {"color": "#848484"}}]);
+        var selectedNodeId = null;
+        var notesData = {};
+        var infoPanel = document.getElementById('info-panel');
+        var notesField = document.getElementById('node-notes');
+
+        // Функция поиска всех связанных узлов (как в оригинале)
+        function findConnectedNodes(nodeId, direction) {
+            var connectedNodes = [];
+            var stack = [nodeId];
+            
+            while(stack.length > 0) {
+                var current = stack.pop();
+                connectedNodes.push(current);
+                var connected = network.getConnectedNodes(current, direction);
+                connected.forEach(function(node) {
+                    if(connectedNodes.indexOf(node) === -1) {
+                        stack.push(node);
+                    }
+                });
+            }
+            return connectedNodes;
+        }
+
+        function resetHighlight() {
+            nodes.forEach(function(node) {
+                nodes.update({
+                    id: node.id,
+                    color: {
+                        background: '#D2E5FF',
+                        border: '#2B7CE9'
+                    }
+                });
+            });
+            edges.forEach(function(edge) {
+                edges.update({
+                    id: edge.id,
+                    color: {color: '#848484'}
+                });
+            });
+        }
+
+        // Заполняем datalist для автодополнения
+        var functionsList = document.getElementById('functions-list');
+        nodes.forEach(function(node) {
+            var option = document.createElement('option');
+            option.value = node.label + " (" + (node.path || 'N/A') + ")";
+            option.dataset.nodeId = node.id;
+            functionsList.appendChild(option);
+        });
+
+        var searchInput = document.getElementById('search-input');
+        searchInput.addEventListener('input', function() {
+            var value = searchInput.value;
+            var found = nodes.get().find(n => value.startsWith(n.label));
+            if(found) {
+                // Имитируем клик по узлу, чтобы сохранить подсветку и панель
+                network.selectNodes([found.id]);
+                network.focus(found.id, {animation:true});
+                network.emit("click", {nodes: [found.id]});
+            }
+        });
+
+        var container = document.getElementById('mynetwork');
+        var data = { nodes: nodes, edges: edges };
+        var options = {
+            layout: {
+                improvedLayout: true,
+                hierarchical: {
+                    direction: "UD",
+                    sortMethod: "directed",
+                    nodeSpacing: 200,
+                    levelSeparation: 200,
+                    treeSpacing: 200,
+                    edgeMinimization: true,
+                    parentCentralization: true,
+                    blockShifting: true
+                }
+            },
+            physics: {
+                hierarchicalRepulsion: { nodeDistance: 250, centralGravity: 0.0, springLength: 250, springConstant: 0.01, damping: 0.09 },
+                solver: "hierarchicalRepulsion",
+                stabilization: { enabled: true, iterations: 1000, updateInterval: 25 }
+            },
+            edges: {
+                smooth: { enabled: true, type: 'curvedCW', roundness: 0.2 },
+                arrows: { to: { enabled: true, scaleFactor: 0.8 } },
+                color: { color: '#848484', highlight: '#5BB82C' }
+            },
+            nodes: { shape: 'box', margin: 10, font: { size: 12, face: 'Tahoma' }, widthConstraint: { minimum: 150 }, heightConstraint: { minimum: 50 } },
+            interaction: { dragNodes: true, dragView: true, zoomView: true, hideEdgesOnDrag: false, tooltipDelay: 200 }
+        };
+        var network = new vis.Network(container, data, options);
+
+        network.on("click", function(params) {
+            if(params.nodes.length > 0) {
+                selectedNodeId = params.nodes[0];
+                var node = nodes.get(selectedNodeId);
+
+                resetHighlight();
+
+                var upstreamNodes = findConnectedNodes(selectedNodeId, 'from');
+                var downstreamNodes = findConnectedNodes(selectedNodeId, 'to');
+                var allConnectedNodes = [...new Set([...upstreamNodes, ...downstreamNodes, selectedNodeId])];
+
+                allConnectedNodes.forEach(function(nodeId) {
+                    nodes.update({
+                        id: nodeId,
+                        color: {
+                            background: '#7BE141',
+                            border: '#5BB82C'
+                        }
+                    });
+                });
+
+                infoPanel.classList.add('visible');
+                document.getElementById('node-name').value = node.label;
+                document.getElementById('node-id').value = node.id;
+                document.getElementById('node-path').value = node.path || 'N/A';
+                document.getElementById('node-string').value = node.string_num || 'N/A';
+                notesField.value = node.notes || '';
+            } else {
+                resetHighlight();
+                selectedNodeId = null;
+                infoPanel.classList.remove('visible');
+            }
+        });
+
+        notesField.addEventListener('input', function() {
+            if(selectedNodeId) {
+                nodes.update({id: selectedNodeId, notes: notesField.value});
+                notesData[selectedNodeId] = notesField.value;
+                localStorage.setItem('functionCallGraphNotes', JSON.stringify(notesData));
+            }
+        });
+
+        // Загрузка сохранённых заметок
+        var savedNotes = localStorage.getItem('functionCallGraphNotes');
+        if(savedNotes) {
+            notesData = JSON.parse(savedNotes);
+            nodes.forEach(function(node) {
+                if(notesData[node.id]) {
+                    node.notes = notesData[node.id];
+                    nodes.update(node);
+                }
+            });
+        }
+
+        network.on("stabilizationIterationsDone", function() {
+            network.fit({animation: {duration: 1000, easingFunction: 'easeInOutQuad'}});
+        });
+    </script>
+</body>
+</html>
