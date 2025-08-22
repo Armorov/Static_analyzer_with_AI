@@ -1,57 +1,28 @@
-import os
-import json
 from hashlib import md5
 from langchain_ollama import ChatOllama
 from typing import List, Dict
+from prompts import prompt_lang_setting
+from tools.tool_manager import load_tools
+import json
 
-
-prompt_lang_setting = {
-    "kotlin": {'FUNC': """
-               ты анализируешь код на языке программирования Kotlin.
-               Твоя задача выделить:
-               FUNC_PATH - путь до файла, где реализован код
-               FUNC_NAME - имя анализируемой функции
-               ARG_LIST- список аргументов которые она принимает вида {'NAME': имя аргумента, 'TYPE': тип аргумента} 
-               FUNC_LIST - список имен вызовов в теле этой функции вида {'NAME': имя вызываемой функции или метода, 'ARGS': список имен объектов, которые она принимает} 
-               """},
-    "c": {},
-}
-
-
+# настройки sitter под конкретный язык
 sitter_lang_settings = {
     "kotlin": {'FUNC': 'function_declaration', 
-               'CLASS': None
+               'CLASS': 'class_declaration',
                },
     "c": {'FUNC': 'function_definition', 
-          'CLASS': None
+          'CLASS': None,
           },
 }
 
 
-def save_results(FUNC_PATH: str, FUNC_NAME: str, ARG_LIST: List[Dict], FUNC_LIST: List[Dict]):
-    """
-  Сохраняет результат анализа кода
-
-  Args:
-        FUNC_NAME - имя анализируемой функции
-        ARG_LIST - список аргументов которые она принимает вида {'NAME': имя аргумента, 'TYPE': тип аргумента} 
-        FUNC_LIST - список имен вызовов в теле этой функции вида {'NAME': имя вызываемой функции или метода, 'ARGS': список имен объектов, которые она принимает} 
-    """
-    print(FUNC_PATH, FUNC_NAME, ARG_LIST, FUNC_LIST)
-
-
 # словарь всех доступных инструментов
-TOOLS = {
-    "save_results": save_results,
-    # сюда можно добавлять новые функции, которые LLM может вызвать
-}
+TOOLS = load_tools()
 
 
-def handle_tool_calls(response):
+def handle_tool_calls(response) -> Dict | None:
     """
-    Обрабатывает все вызовы инструментов из LLM-ответа.
-    Для каждого вызова ищет Python-функцию по имени и вызывает её с аргументами.
-    Работа обёрнута в try/except, чтобы ошибки одного инструмента не падали весь процесс.
+    Обрабатывает вызов инструмента и возвращает результат одного вызова.
     """
     for call in getattr(response, "tool_calls", []):
         tool_name = call.get("name")
@@ -59,23 +30,28 @@ def handle_tool_calls(response):
         func = TOOLS.get(tool_name)
         if func:
             try:
-                func(**args)
+                return func(**args)
             except Exception as e:
                 print(f"⚠️ Ошибка при вызове инструмента {tool_name}: {e}")
+                return None
         else:
             print(f"⚠️ Инструмент {tool_name} не зарегистрирован.")
+    return None
 
 
-def ai_work(code, prompt, path):
-    chat = ChatOllama(model='qwen3:30b-a3b-instruct-2507-q4_K_M', temperature=0.1)
+def ai_work(code, prompt) -> Dict | None:
+    chat = ChatOllama(model='gpt-oss:20b', temperature=0.1)
     messages = [
-        {'role':'system', 'content': f'Ты эксперт в синтаксическом и сематическом анализе программного кода. Правила анализа кода: {prompt}.\n'},
-        {'role':'user', 'content': f'Код реализован в файле {path}. Код для анализа:\n{code}'}
+        {'role':'system', 'content': f'''Ты эксперт в синтаксическом и семантическом анализе программного кода. 
+         Для записи результатат воспользуйся одной из следующий функций save_func, save_class, save_source.
+         Правила анализа кода: {prompt}.\n'''},
+        {'role':'user', 'content': f'Код для анализа:\n{code}'}
     ]
-
     response = chat.invoke(messages, tools=list(TOOLS.values()))
-    handle_tool_calls(response)  # теперь все инструменты вызовутся автоматически
+    return handle_tool_calls(response)
 
+TEST_CLASS_MODE = False
+TEST_SOURCE_MODE = True
 
 def analyze(queue, path, landuage_name):
     """
@@ -84,16 +60,52 @@ def analyze(queue, path, landuage_name):
     def get_text(node):
         return node.text.decode('utf-8') if node and node.text else ''
 
+    functions = []
     current_function = None
     while queue:
         node, current_function = queue.popleft()
         if not node:
             continue
 
+        if TEST_SOURCE_MODE:
+            temp_dict = ai_work(get_text(node), prompt_lang_setting[landuage_name]['SOURCE'])
+            print(json.dumps(temp_dict, ensure_ascii=False, indent=4))
+            temp_dict.update({'PATH': path})
+            for func in temp_dict.get('FUNCS'):
+                id_name = f'{path}_{func.get('START_POINT')}'
+                result = {'ID': f"{md5(id_name.encode()).hexdigest()}",
+                        'VALUES': [],
+                        'CALLED_BY': [],
+                        'DEFINITION': [],
+                }
+                func.update(result)
+            print(json.dumps(temp_dict, ensure_ascii=False, indent=4))
+            exit()
+            
+            
         if node.type == sitter_lang_settings[landuage_name]['FUNC']:
-            ai_work(get_text(node), prompt_lang_setting[landuage_name]['FUNC'], path)
-
+            print('func')
+            temp_dict = ai_work(get_text(node), prompt_lang_setting[landuage_name]['FUNC'])
+            if temp_dict:
+                id_name = f'{path}_{node.start_point[0] + 1}'
+                result = {'ID': f"{md5(id_name.encode()).hexdigest()}",
+                          'PATH': path,
+                          'VALUES': [],
+                          'CALLED_BY': [],
+                          'DEFINITION': [],
+                          'START_POINT': node.start_point[0] + 1,
+                          'END_POINT': node.end_point[0] + 1
+                        }
+                result.update(temp_dict)
+                functions.append(result)
+                print(json.dumps(result, ensure_ascii=False, indent=4))
+        
+        elif TEST_CLASS_MODE and node.type == sitter_lang_settings[landuage_name]['CLASS']:
+            print('class')
+            temp_dict = ai_work(get_text(node), prompt_lang_setting[landuage_name]['CLASS'])
+        
         # кладём детей в очередь
         for child in node.named_children:
             if child:
                 queue.append((child, current_function))
+    return functions
